@@ -90,7 +90,7 @@ class FacebookDownloader:
         if self.slow:
           time.sleep(1) #Sleep to not overload server or firewall.
       except urllib2.URLError as e:
-        if str(e.reason).find("[Errno 10060]") != -1:
+        if str(e.reason).find("[Errno 10060]") != -1 or str(e.reason).find("[Errno 104] Connection reset by peer") != -1:
           print "Timeout: Wil retry in 5 seconds..."
           time.sleep(5)
         elif hasattr(e, 'code') and e.code == 400:
