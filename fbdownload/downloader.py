@@ -63,7 +63,7 @@ class FacebookDownloader:
 
   def downloadUrl(self, url):
     '''
-    Download the given URL and haldle errors such as timeout and
+    Download the given URL and handle errors such as timeout and
     authentication that needs to be redone.
     '''
     if self.access_token == None:

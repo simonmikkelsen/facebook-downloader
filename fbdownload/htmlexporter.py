@@ -1,10 +1,11 @@
+from fbdownload.downloader import FacebookDownloader
 import urllib2
 import os.path
 import json
 from fbdownload.htmlhelper import HtmlHelper
-from datetime import datetime
+import dateutil.parser
 
-class FacebookHtmlExporter:
+class FacebookHtmlExporter(FacebookDownloader):
   '''
   Takes an object hirachy that is created from a json file
   and exports the data as a Facebook group into a html file.
@@ -19,15 +20,13 @@ class FacebookHtmlExporter:
     :param htmlFile: the path to the file to export to.
     :param access_token: a Facebook access token.
     '''
+    FacebookDownloader.__init__(self, access_token)
     self.htmlFile = htmlFile
     self.verbose = 0
     self.getImages = ['small']
-    self.access_token = access_token
     
   def setHtmlFile(self, filename):
     self.htmlFile = filename
-  def setAccessToken(self, token):
-    self.access_token = token
   def setVerbose(self, verbose):
     self.verbose = verbose
   def setDownloadImages(self, vals):
@@ -51,6 +50,7 @@ class FacebookHtmlExporter:
     Downloads the json for the image represented by the given object_id. The id is e.g.
     found in an event or feed that has a picture. It does not look like it
     is related to a picture but it is.
+    A list of the names of the downloaded images is returned.
     :param object_id: the ID of the picture.
     '''
     # Define URL.
@@ -83,12 +83,17 @@ class FacebookHtmlExporter:
         return []
       print "Error of image: "+url
       raise e
-    return self.downloadImages(objectJson)
+    if type(objectJson) is str:
+      return self.downloadImages(json.loads(objectJson))
+    else:
+      # Unsupported request error.
+      return []
 
   def downloadImages(self, imageObj, object_id = None):
     '''
     Given a Facebook image object (some json parsed into Python variables)
     the represented image is downloaded in several sizes.
+    A list of the names of the downloaded images is returned.
     
     :param imageObj: representation of the image in json objects.
     :param object_id: object_id if available.
@@ -207,9 +212,9 @@ class FacebookHtmlExporter:
       className = fieldName
     if fieldName in field:
       html = []
-      html += u"""<div class="%s">""" % className
-      html += HtmlHelper.escapeHtml(field[fieldName])
-      html += u"""</div>"""
+      html.append(u"""<div class="%s">""" % className)
+      html.append(HtmlHelper.escapeHtml(field[fieldName]))
+      html.append(u"""</div>""")
       return "".join(html)
     else:
       return ""
@@ -252,23 +257,23 @@ class FacebookHtmlExporter:
     :param address: the address to display.
     '''
     html = []
-    html += u"""<div class="address">"""
-    html += self.fieldToDiv(address, 'street', 'street')
-    html += self.fieldToDiv(address, 'zip', 'zip')
-    html += self.fieldToDiv(address, 'city', 'city')
-    html += self.fieldToDiv(address, 'country', 'country')
+    html.append(u"""<div class="address">""")
+    html.append(self.fieldToDiv(address, 'street', 'street'))
+    html.append(self.fieldToDiv(address, 'zip', 'zip'))
+    html.append(self.fieldToDiv(address, 'city', 'city'))
+    html.append(self.fieldToDiv(address, 'country', 'country'))
     if 'latitude' in address and 'longitude' in address:
       lat = address['latitude']
       longi = address['longitude']
       latParts = self.gpsDegreesToDaysMinSec(lat)
       longParts = self.gpsDegreesToDaysMinSec(longi)
       serviceUrl = "http://tools.wmflabs.org/geohack/geohack.php?params=%s_%s_%s_N_%s_%s_%s_E" % (latParts[0], latParts[1], latParts[2], longParts[0], longParts[1], longParts[2])
-      html += u"""<div class="maps">"""
-      html += u"""<a href="%s" target="_blank">%s</a>, """ % (serviceUrl, "Maps and photos")
-      html += u"""<a href="http://www.openstreetmap.org/?mlat=%s&mlon=%s&zoom=16#map=16/%s/%s" target="_blank">%s</a>, """ % (lat, longi, lat, longi, "OpenStreetMap")
-      html += u"""GPS: %s, %s """ % (lat, longi)
-      html += u"""</div>"""
-    html += u"""</div>"""
+      html.append(u"""<div class="maps">""")
+      html.append(u"""<a href="%s" target="_blank">%s</a>, """ % (serviceUrl, "Maps and photos"))
+      html.append(u"""<a href="http://www.openstreetmap.org/?mlat=%s&mlon=%s&zoom=16#map=16/%s/%s" target="_blank">%s</a>, """ % (lat, longi, lat, longi, "OpenStreetMap"))
+      html.append(u"""GPS: %s, %s """ % (lat, longi))
+      html.append(u"""</div>""")
+    html.append(u"""</div>""")
     return "".join(html)
 
   def event2Html(self, event):
@@ -277,41 +282,41 @@ class FacebookHtmlExporter:
     in a html file. These can be joined using "".join(list).
     '''
     html = []
-    html += u"""<div class="event">"""
+    html.append(u"""<div class="event">""")
     if 'event' in event:
       eventEvent = event['event']
-      html += self.fieldToDiv(eventEvent, 'name', 'title')
+      html.append(self.fieldToDiv(eventEvent, 'name', 'title'))
       if 'owner' in eventEvent:
-        html += u"""<div class="owner">"""
-        html += self.user2Html(eventEvent['owner'])
-        html += u"""</div>"""
-      html += self.fieldToDiv(eventEvent, 'location', 'location')
+        html.append(u"""<div class="owner">""")
+        html.append(self.user2Html(eventEvent['owner']))
+        html.append(u"""</div>""")
+      html.append(self.fieldToDiv(eventEvent, 'location', 'location'))
       if 'venue' in eventEvent:
-        html += self.address2Html(eventEvent['venue'])
-      html += self.fieldToDiv(eventEvent, 'start_time', 'startTime')
-      html += self.fieldToDiv(eventEvent, 'description', 'description')
+        html.append(self.address2Html(eventEvent['venue']))
+      html.append(self.fieldToDiv(eventEvent, 'start_time', 'startTime'))
+      html.append(self.fieldToDiv(eventEvent, 'description', 'description'))
       if 'photos' in event:
         for photo in event['photos']:
           res = self.downloadImages(photo)
-          html += self.image2Html(res)
+          html.append(self.image2Html(res))
       
       if 'feed' in event:
-        html += u"""<div class="comments">"""
-        html += self.messages2Html(event['feed'])
-        html += u"""</div>"""
+        html.append(u"""<div class="comments">""")
+        html.append(self.messages2Html(event['feed']))
+        html.append(u"""</div>""")
       if 'attending' in event:
-        html += u"""<div class="attending">Attending: """
-        html += self.userList(event['attending'])
-        html += u"""</div>"""
+        html.append(u"""<div class="attending">Attending: """)
+        html.append(self.userList(event['attending']))
+        html.append(u"""</div>""")
       if 'maybe' in event:
-        html += u"""<div class="maby">Maby: """
-        html += self.userList(event['maybe'])
-        html += u"""</div>"""
+        html.append(u"""<div class="maby">Maby: """)
+        html.append(self.userList(event['maybe']))
+        html.append(u"""</div>""")
       if 'declined' in event:
-        html += u"""<div class="declined">Declined: """
-        html += self.userList(event['declined'])
-        html += u"""</div>"""
-    html += u"""</div>""" #End class=event
+        html.append(u"""<div class="declined">Declined: """)
+        html.append(self.userList(event['declined']))
+        html.append(u"""</div>""")
+    html.append(u"""</div>""") #End class=event
     return html
 
   def events2Html(self, events):
@@ -322,7 +327,7 @@ class FacebookHtmlExporter:
     html = []
     for event in events:
       html += self.event2Html(event)
-    return "".join(html)
+    return "\n".join(html)
   
   def image2Html(self, gotImages, link = None):
     '''
@@ -336,15 +341,15 @@ class FacebookHtmlExporter:
     for size in ['medium', 'small', 'large']:
       if size in gotImages:
         if link != None:
-          html += u"<div class=\"picture\"><a href=\"%s\" target=\"_blank\"><img src=\"%s\" /></a></div>\n" % (link, gotImages[size])
+          html.append(u"<div class=\"picture\"><a href=\"%s\" target=\"_blank\"><img src=\"%s\" /></a></div>\n" % (link, gotImages[size]))
         else:
-          html += u"<div class=\"picture\"><img src=\"" + gotImages[size]+u"\" /></div>\n"
+          html.append(u"<div class=\"picture\"><img src=\"" + gotImages[size]+u"\" /></div>\n")
         break
-    html += u"<div class=\"downloadImages\">"
+    html.append(u"<div class=\"downloadImages\">")
     for size in ['small', 'medium', 'large']:
       if size in gotImages:
-        html += u"<a href=\"%s\" target=\"_blank\">%s</a> " % (gotImages[size], size.title())
-    html += u"</div>"
+        html.append(u"<a href=\"%s\" target=\"_blank\">%s</a> " % (gotImages[size], size.title()))
+    html.append(u"</div>")
     return "".join(html)
 
   def message2Html(self, msg):
@@ -353,52 +358,52 @@ class FacebookHtmlExporter:
     in a html file. These can be joined using "".join(list).
     '''
     html = []
-    html += u"""<div class="message">"""
+    html.append(u"""<div class="message">""")
     if 'from' in msg:
-      html += u"""  <div class="from">"""
-      html += self.user2Html(msg['from'])
-      html += u"</div>\n"
+      html.append(u"""  <div class="from">""")
+      html.append(self.user2Html(msg['from']))
+      html.append(u"</div>\n")
     if 'message' in msg:
-      html += u"""  <div class="body">"""
-      html += HtmlHelper.escapeHtml(msg['message'])
-      html += u"</div>\n"
+      html.append(u"""  <div class="body">""")
+      html.append(HtmlHelper.escapeHtml(msg['message']))
+      html.append(u"</div>\n")
     elif 'type' in msg and msg['type'] == 'photo' and 'story' in msg:
-      html += u"""  <div class="body">"""
-      html += HtmlHelper.escapeHtml(msg['story'])
-      html += u"</div>\n"
+      html.append(u"""  <div class="body">""")
+      html.append(HtmlHelper.escapeHtml(msg['story']))
+      html.append(u"</div>\n")
     link = None
     if 'link' in msg:
       link = msg['link']
     addedImageWithLink = False
     if 'picture' in msg:
       gotImages = False
-      if 'object_id' in msg and False:
+      if 'object_id' in msg:
         gotImages = self.downloadImageFromObjectID(msg['object_id'])
-        html += self.image2Html(gotImages, link)
+        html.append(self.image2Html(gotImages, link))
         if link != None:
           addedImageWithLink = True
     if not addedImageWithLink and link != None:
-      html += u"<div class=\"link\" target=\"_blank\"><a href=\"" + link + u"\">" + link + u"</a></div>\n"
+      html.append(u"<div class=\"link\" target=\"_blank\"><a href=\"" + link + u"\">" + link + u"</a></div>\n")
     if 'created_time' in msg:
-      html += u"""  <div class="info">"""
-      html += msg['created_time']
-      html += u"</div>\n"
+      html.append(u"""  <div class="info">""")
+      html.append(msg['created_time'])
+      html.append(u"</div>\n")
     if 'likes' in msg:
-      html += u"<div class=\"msgLikeCount\">Likes: " + str(len(msg['likes']['data'])) + "</div>\n"
-      html += u"""  <div class="likes">Likes: \n"""
+      html.append(u"<div class=\"msgLikeCount\">Likes: " + str(len(msg['likes']['data'])) + "</div>\n")
+      html.append(u"""  <div class="likes">Likes: \n""")
       for user in msg['likes']['data']:
-        html += u"""    <div class="like">"""
-        html += self.user2Html(user)
-        html += u"</div>\n"
+        html.append(u"""    <div class="like">""")
+        html.append(self.user2Html(user))
+        html.append(u"</div>\n")
       
-      html += u"</div>\n"
+      html.append(u"</div>\n")
     if 'like_count' in msg and msg['like_count'] > 0:
-      html += u"<div class=\"likeCount\">Likes: " + str(msg['like_count']) + u"</div>\n"
+      html.append(u"<div class=\"likeCount\">Likes: " + str(msg['like_count']) + u"</div>\n")
     if 'comments' in msg:
-      html += u"""<div class="comments">"""
-      html += self.messages2Html(msg['comments']['data'])
-      html += u"</div> <!-- comments -->\n"
-    html += u"</div>\n" # /message
+      html.append(u"""<div class="comments">""")
+      html.append(self.messages2Html(msg['comments']['data']))
+      html.append(u"</div> <!-- comments -->\n")
+    html.append(u"</div>\n") # /message
     return html
 
   def messages2Html(self, data):
@@ -436,21 +441,23 @@ class FacebookHtmlExporter:
       for event in data['events']:
         elements.append(ExportElement(event['event']['updated_time'], 'event', event))
     if 'group.posts' in data:
-      if 'group.posts' in data:
-        for post in data['group.posts']:
-          elements.append(ExportElement(post['updated_time'], 'post', post))
+      for post in data['group.posts']:
+        elements.append(ExportElement(post['updated_time'], 'post', post))
     
     # Sort everything.
     elements.sort()
+    elements.reverse()
     
     # Export to HTML.
     fp = open(self.htmlFile, u'wb')
     fp.write("""<html><head><meta charset="utf-8"><link href="main.css" rel="stylesheet" type="text/css" /></head><body>\n""")
     for ele in elements:
       if ele.kind == 'post':
-        fp.write(u''.join(self.message2Html(ele.element)).encode('utf8'))
+        fp.write(u"\n".join(self.message2Html(ele.element)).encode('utf8'))
       elif ele.kind == 'event':
-        fp.write(u''.join(self.event2Html(ele.element)).encode('utf8'))
+        fp.write(u"\n".join(self.event2Html(ele.element)).encode('utf8'))
+      else:
+        print "Unknown kind: "+ele.kind
     fp.write("""</body></html>\n""")
     fp.close()
     
@@ -460,8 +467,11 @@ class ExportElement:
   '''
   def __init__(self, time, kind, element):
     # E.g. of date: 2014-11-16T20:00:00+0100
-    self.time = datetime.strptime(time, '%Y-%m-%dT%H:%M:%S+0000').time()
+    self.time = dateutil.parser.parse(time)
     self.kind = kind
     self.element = element
-  def __tmp(self, other):
-    return self.time - other.time
+  def __lt__(self, other):
+    return self.time < other.time
+  def __eq__(self, other):
+    return self.time == other.time
+

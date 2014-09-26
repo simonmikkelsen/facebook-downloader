@@ -38,6 +38,8 @@ if __name__ == "__main__":
   -g --group        Give the ID fo the group you want to download.
                     This is a number and NOT a name.
      --no-events    Do not download events.
+     --light-events When downloading events, do not get lists of invited and
+                    declined people.
      --list-groups  List all the groups with group IDs that the given access token
                     can access.
   -a --access-token Get one e.g. using https://developers.facebook.com/tools/explorer/
