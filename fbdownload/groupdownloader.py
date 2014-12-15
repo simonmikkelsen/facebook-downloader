@@ -28,9 +28,25 @@ class FacebookGroupDownloader(FacebookDownloader):
       self.downloadEvents()
     elif self.verbose > 0:
       print "Do not download events."
+    
+    self.downloadFiles()
     self.downloadGroup()
+    
     return self.data
   
+  def downloadFiles(self):
+    # https://graph.facebook.com/id/files/
+    url = "https://graph.facebook.com/%s/files" % self.groupId
+    data = self.downloadData(url, 'group.files')
+    
+    for da in data:
+      if 'download_link' in da:
+        da['download_link']
+    
+    #print data
+    
+    
+    
   def downloadGroup(self):
     '''
     Download the groups feed.
