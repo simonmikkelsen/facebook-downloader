@@ -1,3 +1,8 @@
+import urllib
+import re
+import urllib2
+import os.path
+
 from fbdownload.downloader import FacebookDownloader
 
 class FacebookGroupDownloader(FacebookDownloader):
@@ -41,11 +46,25 @@ class FacebookGroupDownloader(FacebookDownloader):
     
     for da in data:
       if 'download_link' in da:
-        da['download_link']
+        url = da['download_link']
+        filename = self.getLocalFileName(url)
+        print url + "=>" + filename
+        contents = self.downloadFile(url)
     
-    #print data
+  def getLocalFileName(self, url):
+    ''' Turns the url to a document into a unique file name.'''
+    parts = url.split("/")
+    objid = parts[-2]
+    full_filename = parts[-1]
     
+    filename = full_filename[:full_filename.rfind(".")]
+    filename = urllib.unquote(filename)
+    # Replace multiple spaces with one.
+    filename = re.sub('\s+', ' ', filename)
+    fileext = full_filename[full_filename.rfind(".") + 1:]
     
+    #123123123 and filename.zip becomes: filename-123123123.zip to ensure uniqueness. 
+    return 'files/' + filename + "-" + objid + "." + fileext  
     
   def downloadGroup(self):
     '''
@@ -86,3 +105,4 @@ class FacebookGroupDownloader(FacebookDownloader):
     When True, only the most important attributes of an event are downloaded.
     '''
     self.lightEvents = lightEvents
+

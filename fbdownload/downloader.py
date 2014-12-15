@@ -290,3 +290,43 @@ class FacebookDownloader:
           entry[kind] = self.getCompletePaging(entry[kind])
       resData.append(entry)
     return resData
+    
+  def downloadFile(self, dlurl):
+    '''Download the given url and return the contents of it.'''
+    retry = True
+    urlData = None
+    while retry:
+      try:
+        #resp = urllib2.urlopen(dlurl)
+        opener = urllib2.build_opener()
+        opener.addheaders = [('User-agent', 'Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11')]
+        resp = opener.open(dlurl)
+        if self.verbose > 1:
+          print "Got: "+dlurl
+        urlData = resp.read()
+        retry = False
+      except urllib2.HTTPError, e:
+        if e.code == 404:
+          print u"404 Not found: "+dlurl
+          retry = False
+          continue
+        elif e.code == 403:
+          print u"403 Forbidden: "+dlurl
+          retry = False
+          continue
+        elif e.code == 504:
+          print u"504 Gateway Time-out - retrying..."
+          time.sleep(1)
+          retry = True
+          continue
+        print dlurl
+        raise e
+    return urlData
+#        dirname = self.getDirname(key)
+#        if not os.path.isdir(dirname):
+#          os.makedirs(dirname)
+  
+#        imgFp = open(filename, u'wb')
+#        imgFp.write(imageData)
+#       imgFp.close()
+
